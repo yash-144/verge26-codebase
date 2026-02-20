@@ -1,0 +1,97 @@
+{
+  "expo": {
+    "name": "VERGE 2k26",
+    "slug": "converge",
+    "version": "1.0.0",
+    "scheme": "converge",
+    "extra": {
+      "eas": {
+        "projectId": "2abb813f-c27a-49e0-a5d7-939cef3be21a"
+      },
+      "EXPO_PUBLIC_API_URL": "https://verge-2026-codebase-production.up.railway.app",
+      "EXPO_PUBLIC_PROJECT_ID": "2abb813f-c27a-49e0-a5d7-939cef3be21a"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "experiments": {
+      "tsconfigPaths": true
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notifications-icon.png"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#050505"
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "enableMinifyInReleaseBuilds": true
+          }
+        }
+      ],
+      "./plugins/withRazorpay",
+      "expo-router",
+      "expo-font",
+      "expo-video",
+      "expo-updates"
+    ],
+    "orientation": "portrait",
+    "icon": "./assets/app-icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#050505"
+    },
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "jsEngine": "jsc",
+    "newArchEnabled": false,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.verge.converge",
+      "buildNumber": "1",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Allow Converge to access your photos to upload your profile picture.",
+        "NSCameraUsageDescription": "Allow Converge to access your camera to take a profile picture.",
+        "NSMicrophoneUsageDescription": "Allow Converge to access your microphone."
+      }
+    },
+    "android": {
+      "package": "com.verge.converge",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#050505"
+      },
+      "notification": {
+        "icon": "./assets/notifications-icon.png"
+      }
+    },
+    "owner": "yash-144",
+    "updates": {
+      "url": "https://u.expo.dev/2abb813f-c27a-49e0-a5d7-939cef3be21a"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
+  }
+}
