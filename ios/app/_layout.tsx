@@ -35,29 +35,19 @@ function RootLayoutContent() {
   const segments = useSegments();
 
   useEffect(() => {
-    const unsubscribe = authService.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-
-      if (currentUser) {
-        // For Firebase-authenticated users, trust Firebase session state.
-        setIsVerified(true);
+    const initializeAuth = async () => {
+      try {
+        const activeUser = await authService.getUserSession();
+        setUser(activeUser);
+        setIsVerified(Boolean(activeUser?.emailVerified));
+      } catch (err) {
+        setUser(null);
+        setIsVerified(false);
+      } finally {
         setAuthInitialized(true);
-        // Keep backend profile sync best-effort and non-blocking.
-        void authService.syncUserWithBackend(currentUser).catch(() => { });
-      } else {
-        void (async () => {
-          try {
-            const backendUser = await authService.getBackendUser();
-            setIsVerified(Boolean(backendUser?.emailVerified));
-          } catch {
-            setIsVerified(false);
-          } finally {
-            setAuthInitialized(true);
-          }
-        })();
       }
-    });
-    return () => unsubscribe();
+    };
+    initializeAuth();
   }, [setIsVerified]);
 
   useEffect(() => {

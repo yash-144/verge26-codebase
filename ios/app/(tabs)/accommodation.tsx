@@ -150,7 +150,8 @@ export default function Accommodation() {
       const response = await apiHelper.fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/accommodation/my?userId=${userId}`);
       if (response.ok) {
         const result = await response.json();
-        if (result.data) {
+        const hasBooking = result.data && (Array.isArray(result.data) ? result.data.length > 0 : true);
+        if (hasBooking) {
           setHasExistingBooking(true);
         }
       }
@@ -160,19 +161,32 @@ export default function Accommodation() {
   };
 
   useEffect(() => {
-    const currentUser = authService.getSession();
-    setUser(currentUser);
-
     const init = async () => {
-      await fetchHostels();
-      const backendUser = await authService.getBackendUser();
+      const backendUser = await authService.getUserSession();
+      setUser(backendUser);
 
-      if (backendUser || currentUser) {
-        const bid = backendUser?._id || '';
-        await Promise.all([
-          fetchUserProfile(bid),
-          checkExistingBooking(bid)
-        ]);
+      await fetchHostels();
+
+      if (backendUser) {
+        let bid = backendUser?._id || '';
+        
+        // Robust ID recovery
+        if (!bid && backendUser.email) {
+          try {
+            const profileRes = await apiHelper.fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/users/get?email=${backendUser.email}`);
+            if (profileRes.ok) {
+              const profileData = await profileRes.json();
+              bid = profileData.data?._id || '';
+            }
+          } catch (e) {}
+        }
+
+        if (bid) {
+          await Promise.all([
+            fetchUserProfile(bid),
+            checkExistingBooking(bid)
+          ]);
+        }
       }
       setLoading(false);
     };
@@ -202,8 +216,8 @@ export default function Accommodation() {
     return missing;
   }, []);
 
-  const handleBooking = useCallback((id: string) => {
-    const session = authService.getSession();
+  const handleBooking = useCallback(async (id: string) => {
+    const session = await authService.getUserSession();
     if (!session && !userProfile) {
       showAlert('Link Lost', 'Please establish session to reserve pod.');
       router.replace("/login");

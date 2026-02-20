@@ -172,15 +172,13 @@ export default function Profile() {
 
   const fetchUserProfile = async () => {
     try {
-      const session = authService.getSession();
       const backendUser = await authService.getBackendUser();
 
       let response;
       if (backendUser?._id) {
         response = await apiHelper.fetch(`${SERVER_URL}/api/users/get?id=${backendUser._id}`);
-      } else if (backendUser?.email || session?.email) {
-        const email = backendUser?.email || session?.email;
-        response = await apiHelper.fetch(`${SERVER_URL}/api/users/get?email=${email}`);
+      } else if (backendUser?.email) {
+        response = await apiHelper.fetch(`${SERVER_URL}/api/users/get?email=${backendUser.email}`);
       }
 
       let loadedProfile;
@@ -200,8 +198,8 @@ export default function Profile() {
       } else {
         loadedProfile = {
           ...profile,
-          name: session?.displayName || backendUser?.name || '',
-          email: session?.email || backendUser?.email || '',
+          name: backendUser?.name || '',
+          email: backendUser?.email || '',
           _id: backendUser?._id || '',
         };
       }

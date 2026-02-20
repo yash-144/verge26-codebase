@@ -1,110 +1,38 @@
-import {
-  FirebaseAuthTypes,
-  getAuth,
-  onAuthStateChanged as firebaseOnAuthStateChanged,
-  signOut as firebaseSignOut,
-} from '@react-native-firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiHelper } from './api';
 
-export type Session = FirebaseAuthTypes.User;
-
-
+export type Session = {
+  _id: string;
+  email: string;
+  name: string;
+  emailVerified: boolean;
+  profilePic?: string;
+  [key: string]: any;
+};
 
 const BACKEND_USER_KEY = 'backend_user';
 const BACKEND_SYNCED_KEY = 'backend_synced';
 
-let _syncInProgress: Promise<any> | null = null;
-
 export const authService = {
-  getSession: (): Session | null => {
-    return getAuth().currentUser;
-  },
-
   /**
-   * Returns a unified user object.
-   * Returns the persistent MongoDB profile (which has _id). Falls back to null.
+   * Returns the persistent MongoDB profile (which has _id).
    */
-  getUserSession: async (): Promise<any | null> => {
-    const backendUser = await authService.getBackendUser();
-    if (backendUser) return backendUser;
-
-    // No backend user persisted yet — caller should trigger sync first
-    return null;
+  getUserSession: async (): Promise<Session | null> => {
+    return await authService.getBackendUser();
   },
-
-
 
   signOut: async (): Promise<void> => {
     try {
-      const auth = getAuth();
-      if (auth.currentUser) {
-        await firebaseSignOut(auth).catch(() => { });
-      }
-    } catch (e) {
-      // Ignore auth errors on logout
-    } finally {
       await AsyncStorage.multiRemove([
         BACKEND_USER_KEY,
         BACKEND_SYNCED_KEY,
       ]);
-    }
-  },
-  syncUserWithBackend: async (user: Session): Promise<any> => {
-    // If a sync is already in flight, wait for it instead of firing another
-    if (_syncInProgress) {
-      return _syncInProgress;
-    }
-
-    const doSync = async () => {
-      try {
-        // Check if already synced
-        const existing = await authService.getBackendUser();
-        if (existing) {
-          return existing;
-        }
-
-        const response = await apiHelper.fetch(
-          `${process.env.EXPO_PUBLIC_API_URL}/api/users/create`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: user.displayName || 'Unknown',
-              email: user.email,
-              profilePic: user.photoURL,
-            }),
-          }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(`Backend sync failed (${response.status}): ${data?.message || JSON.stringify(data)}`);
-        }
-
-        // Save backend user locally (this contains the MongoDB _id)
-        const userData = data.data;
-        if (userData) {
-          await AsyncStorage.setItem(BACKEND_USER_KEY, JSON.stringify(userData));
-          await AsyncStorage.setItem(BACKEND_SYNCED_KEY, 'true');
-        }
-
-        return userData;
-      } catch (err) {
-        return null;
-      }
-    };
-
-    _syncInProgress = doSync();
-    try {
-      return await _syncInProgress;
-    } finally {
-      _syncInProgress = null;
+    } catch (e) {
+      // Ignore errors on logout
     }
   },
 
-  getBackendUser: async () => {
+  getBackendUser: async (): Promise<Session | null> => {
     const raw = await AsyncStorage.getItem(BACKEND_USER_KEY);
     return raw ? JSON.parse(raw) : null;
   },
@@ -189,7 +117,8 @@ export const authService = {
         }
       }
     } catch (e) {
-      // Don't persist a user without _id — it would cause issues everywhere
+      console.error('Error persisting user session:', e);
+      throw e;
     }
   },
 };

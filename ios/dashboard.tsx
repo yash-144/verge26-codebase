@@ -473,10 +473,14 @@ export default function DashboardScreen() {
   // Lifecycle
   useFocusEffect(
     useCallback(() => {
-      const session = authService.getSession();
-      setProfilePhoto(session?.photoURL ?? null);
-      isNavigatingRef.current = false;
-      bgRef.current?.play();
+      const init = async () => {
+        const session = await authService.getUserSession();
+        setProfilePhoto(session?.profilePic ?? null);
+        isNavigatingRef.current = false;
+        bgRef.current?.play();
+      };
+      
+      init();
 
       navEntered.value = 0;
       headerEnter.value = 0;

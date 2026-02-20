@@ -40,28 +40,54 @@ export default function BookedHostel() {
 
   const fetchBooking = async () => {
     try {
-      const user = authService.getSession();
-      const backendUser = await authService.getBackendUser();
+      let backendUser = await authService.getUserSession();
 
-      if (!user?.uid && !backendUser?._id) {
+      if (!backendUser) {
+        setLoading(false);
+        return;
+      }
+
+      let bid = backendUser?._id;
+      
+      // If _id is missing, try to fetch the profile by email to get the ID
+      if (!bid && backendUser?.email) {
+        try {
+          const profileRes = await apiHelper.fetch(`${SERVER_URL}/api/users/get?email=${backendUser.email}`);
+          if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            if (profileData.data?._id) {
+              bid = profileData.data._id;
+            }
+          }
+        } catch (profileErr) {
+          // Silent fail for recovery
+        }
+      }
+
+      if (!bid) {
+        setErrorMsg('User ID not found. Please complete your profile.');
         setLoading(false);
         return;
       }
 
       setErrorMsg(null);
-      const bid = backendUser?._id;
-      if (!bid) {
-        setErrorMsg('User ID not found. Please re-login.');
-        setLoading(false);
-        return;
-      }
-
+      
       const response = await apiHelper.fetch(`${SERVER_URL}/api/accommodation/my?userId=${bid}`);
 
       const contentType = response.headers.get("content-type");
       if (response.ok && contentType?.includes("application/json")) {
         const result = await response.json();
-        setBooking(result.data);
+        
+        if (result.status && result.data) {
+          if (Array.isArray(result.data)) {
+            setBooking(result.data.length > 0 ? result.data[0] : null);
+          } else {
+            setBooking(result.data);
+          }
+        } else {
+          setErrorMsg(result.message || "No deployment data found.");
+          setBooking(null);
+        }
       } else {
         const text = await response.text();
         try {
@@ -72,8 +98,7 @@ export default function BookedHostel() {
         }
         setBooking(null);
       }
-    } catch {
-      if (__DEV__) console.error("Fetch booking error");
+    } catch (err) {
       setErrorMsg("Network offline.");
     } finally {
       setLoading(false);
@@ -144,7 +169,7 @@ export default function BookedHostel() {
             <View style={styles.mainCard}>
               <View style={styles.cardSection}>
                 <Text style={styles.label}>DEPLOYMENT SECTOR</Text>
-                <Text style={styles.hostelName}>{booking.hostelName.toUpperCase()}</Text>
+                <Text style={styles.hostelName}>{String(booking.hostelName || 'ASSIGNED SECTOR').toUpperCase()}</Text>
               </View>
 
               <View style={styles.divider} />
@@ -168,7 +193,7 @@ export default function BookedHostel() {
                     styles.statValue,
                     { color: booking.paymentStatus === 'paid' ? THEME.colors.success : THEME.colors.accent }
                   ]}>
-                    {booking.paymentStatus.toUpperCase()}
+                    {String(booking.paymentStatus || 'PENDING').toUpperCase()}
                   </Text>
                 </View>
               </View>

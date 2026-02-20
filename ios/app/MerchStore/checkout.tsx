@@ -180,18 +180,11 @@ export default function Checkout() {
       // Ensure we have a valid backend user with _id
       let user = sessionUser;
       if (!user?._id) {
-        // Re-fetch from storage in case sync completed after page load
+        // Re-fetch from storage
         user = await authService.getUserSession();
         if (user) setSessionUser(user);
       }
-      if (!user?._id) {
-        // Last resort: try syncing now
-        const firebaseUser = authService.getSession();
-        if (firebaseUser) {
-          user = await authService.syncUserWithBackend(firebaseUser);
-          if (user) setSessionUser(user);
-        }
-      }
+      
       if (!user?._id) {
         throw new Error('Unable to verify your account. Please sign out and sign in again.');
       }

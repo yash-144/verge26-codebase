@@ -68,7 +68,7 @@ export default function LegalScreen() {
       <Text style={styles.legalText}>
         We collect only the information necessary to provide core app functionality.{"\n"}{"\n"}
         <Text style={{ fontWeight: 'bold', color: THEME.colors.text }}>a) Personal Information</Text>{"\n"}
-        Name and email address obtained through Google Sign-In. Profile information required for event participation, bookings, and purchases.{"\n"}{"\n"}
+        Name and email address obtained through Email Verification. Profile information required for event participation, bookings, and purchases.{"\n"}{"\n"}
         <Text style={{ fontWeight: 'bold', color: THEME.colors.text }}>b) Transaction Information</Text>{"\n"}
         Hostel booking details, Merchandise order details, Payment status and order history. (Payment processing is handled by authorized third-party payment gateways. The App does not store card or UPI credentials.){"\n"}{"\n"}
         <Text style={{ fontWeight: 'bold', color: THEME.colors.text }}>c) Usage & Technical Data</Text>{"\n"}

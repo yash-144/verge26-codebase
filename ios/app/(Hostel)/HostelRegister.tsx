@@ -98,10 +98,9 @@ export default function HostelRegister() {
 
   const fetchUserData = useCallback(async () => {
     try {
-      const session = authService.getSession();
-      const backendUser = await authService.getBackendUser();
+      const backendUser = await authService.getUserSession();
 
-      if (!session && !backendUser) return;
+      if (!backendUser) return;
 
       const bid = backendUser?._id;
       if (!bid) {
@@ -117,10 +116,10 @@ export default function HostelRegister() {
         const userData = result.data;
 
         const updatedForm = {
-          name: userData.name || session?.displayName || backendUser?.name || '',
+          name: userData.name || backendUser?.name || '',
           gender: userData.gender || backendUser?.gender || '',
           collegeName: userData.collegeName || backendUser?.collegeName || '',
-          email: userData.email || session?.email || backendUser?.email || '',
+          email: userData.email || backendUser?.email || '',
           mongoUserId: userData._id || backendUser?._id,
         };
         setForm((prev) => ({ ...prev, ...updatedForm }));

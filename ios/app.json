@@ -33,9 +33,6 @@
           "backgroundColor": "#050505"
         }
       ],
-      "@react-native-firebase/app",
-      "@react-native-firebase/auth",
-      "@react-native-community/datetimepicker",
       [
         "expo-build-properties",
         {
@@ -68,7 +65,6 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.verge.converge",
       "buildNumber": "1",
-      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow Converge to access your photos to upload your profile picture.",
         "NSCameraUsageDescription": "Allow Converge to access your camera to take a profile picture.",
@@ -77,7 +73,6 @@
     },
     "android": {
       "package": "com.verge.converge",
-      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#050505"
@@ -90,8 +85,6 @@
     "updates": {
       "url": "https://u.expo.dev/2abb813f-c27a-49e0-a5d7-939cef3be21a"
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    }
+    "runtimeVersion": "1.0.0"
   }
 }
