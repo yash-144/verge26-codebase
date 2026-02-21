@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, FlatList, Image, Pressable, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, Pressable, StyleSheet, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Minus, Plus, CreditCard, ShoppingBag } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -47,7 +48,9 @@ export default function Cart() {
       <Image
         source={{ uri: item.images?.[0] || 'https://via.placeholder.com/150' }}
         style={styles.itemImage}
-        resizeMode="cover"
+        contentFit="cover"
+        transition={200}
+        cachePolicy="memory-disk"
       />
 
       <View style={styles.itemDetails}>

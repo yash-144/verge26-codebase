@@ -5,9 +5,9 @@ import {
   Linking,
   StyleSheet,
   Share,
-  Image,
   TouchableOpacity
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -255,7 +255,9 @@ export default function EventDetails() {
                       <Image
                         source={{ uri: event.eventImageURL }}
                         style={styles.eventImage}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        transition={200}
+                        cachePolicy="memory-disk"
                       />
                     )}
                   </View>

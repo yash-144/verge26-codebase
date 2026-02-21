@@ -37,6 +37,10 @@ export const authService = {
     return raw ? JSON.parse(raw) : null;
   },
 
+  setBackendUser: async (user: Session): Promise<void> => {
+    await AsyncStorage.setItem(BACKEND_USER_KEY, JSON.stringify(user));
+  },
+
   checkEmailVerified: async (email: string): Promise<boolean> => {
     try {
       const response = await apiHelper.fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/users/get?email=${email}`);
@@ -44,6 +48,61 @@ export const authService = {
       return data.data?.emailVerified || false;
     } catch (e) {
       return false;
+    }
+  },
+
+  loginWithPassword: async (email: string, password: string): Promise<Session> => {
+    const response = await apiHelper.fetch(
+      `${process.env.EXPO_PUBLIC_API_URL}/api/users/login`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.message || 'Login failed');
+    }
+
+    await authService.setBackendUser(data.data);
+    return data.data;
+  },
+
+  register: async (name: string, email: string, password: string): Promise<Session> => {
+    const response = await apiHelper.fetch(
+      `${process.env.EXPO_PUBLIC_API_URL}/api/users/register`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.message || 'Registration failed');
+    }
+
+    // User is created but not verified yet. 
+    // We can't setBackendUser yet because they need to verify OTP first to login.
+    return data.data;
+  },
+
+  sendLoginOtp: async (email: string): Promise<void> => {
+    const response = await apiHelper.fetch(
+      `${process.env.EXPO_PUBLIC_API_URL}/api/users/login-otp`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.message || 'Failed to send OTP');
     }
   },
 
@@ -68,7 +127,7 @@ export const authService = {
     }
   },
 
-  confirmVerificationCode: async (email: string, code: string, name?: string): Promise<void> => {
+  confirmVerificationCode: async (email: string, code: string): Promise<Session> => {
     const response = await apiHelper.fetch(
       `${process.env.EXPO_PUBLIC_API_URL}/api/email/confirm`,
       {
@@ -78,47 +137,21 @@ export const authService = {
       }
     );
 
-    let data;
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    }
-
+    const data = await response.json();
     if (!response.ok) {
-      throw new Error(data?.message || `Error ${response.status}: Invalid sequence`);
+      throw new Error(data?.message || 'Verification failed');
     }
 
     // After successful verification, fetch the updated user profile and save it
-    try {
-      const userRes = await apiHelper.fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/users/get?email=${email}`);
-      const userData = await userRes.json();
+    const userRes = await apiHelper.fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/users/get?email=${email}`);
+    const userData = await userRes.json();
 
-      if (userData.status && userData.data) {
-        await AsyncStorage.setItem(BACKEND_USER_KEY, JSON.stringify(userData.data));
-      } else {
-        // User record doesn't exist in MongoDB yet, create it
-        const createRes = await apiHelper.fetch(
-          `${process.env.EXPO_PUBLIC_API_URL}/api/users/create`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email,
-              name: name || email.split('@')[0],
-              emailVerified: true,
-            }),
-          }
-        );
-        const createData = await createRes.json();
-        if (createData.status && createData.data) {
-          await AsyncStorage.setItem(BACKEND_USER_KEY, JSON.stringify(createData.data));
-        } else {
-          throw new Error(`Failed to create user record: ${JSON.stringify(createData)}`);
-        }
-      }
-    } catch (e) {
-      console.error('Error persisting user session:', e);
-      throw e;
+    if (userData.status && userData.data) {
+      await authService.setBackendUser(userData.data);
+      return userData.data;
+    } else {
+      throw new Error('Failed to fetch user profile after verification');
     }
   },
 };
+

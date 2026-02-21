@@ -9,8 +9,8 @@ import {
   StyleSheet,
   Pressable,
   StatusBar,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Search,
@@ -229,7 +229,16 @@ export default function Events() {
     try {
       const res = await apiHelper.fetch(`${SERVER_URL}/api/events`);
       const json = await res.json();
-      if (res.ok) setEvents(json.data || []);
+      if (res.ok && json.data) {
+        setEvents(json.data);
+        // Prefetch images
+        const imagesToPrefetch = json.data
+          .map((event: any) => event.eventImageURL)
+          .filter((url: string) => !!url);
+        if (imagesToPrefetch.length > 0) {
+          Image.prefetch(imagesToPrefetch);
+        }
+      }
       
       // Also fetch clubs in parallel
       fetchClubs();
@@ -274,7 +283,9 @@ export default function Events() {
       <Image
         source={require('../../assets/events-bg.png')}
         style={StyleSheet.absoluteFill}
-        resizeMode="cover"
+        contentFit="cover"
+        transition={500}
+        cachePolicy="memory-disk"
       />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.85)' }]} />
 

@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   Linking,
   StyleSheet,
   Dimensions,
@@ -12,6 +11,7 @@ import {
   Modal,
   Pressable,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -55,14 +55,16 @@ type TeamCategory = {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   accent: string;
+  priority: number;
 };
 
-const CATEGORY_STYLES: Array<{ match: RegExp; icon: keyof typeof Ionicons.glyphMap; accent: string }> = [
-  { match: /ORGANI[ZS]ER/, icon: 'people-outline', accent: '#FF6B6B' },
-  { match: /DEVELOPER|TECH/, icon: 'code-slash-outline', accent: '#4ECDC4' },
-  { match: /CORE|MANAGER/, icon: 'star-outline', accent: '#FFE66D' },
-  { match: /GRAPHIC|DESIGN/, icon: 'color-palette-outline', accent: '#A8E6CF' },
-  { match: /SOCIAL|MEDIA|PR|MARKETING/, icon: 'megaphone-outline', accent: '#DDA0DD' },
+const CATEGORY_STYLES: Array<{ match: RegExp; icon: keyof typeof Ionicons.glyphMap; accent: string; priority: number }> = [
+  { match: /ORGANI[ZS]ER/, icon: 'people-outline', accent: '#FF6B6B', priority: 1 },
+  { match: /CORE TEAM/, icon: 'star-outline', accent: '#FFE66D', priority: 2 },
+  { match: /DEVELOPER|TECH/, icon: 'code-slash-outline', accent: '#4ECDC4', priority: 3 },
+  { match: /MANAGER/, icon: 'shield-checkmark-outline', accent: '#FFB86B', priority: 4 },
+  { match: /GRAPHIC|DESIGN/, icon: 'color-palette-outline', accent: '#A8E6CF', priority: 5 },
+  { match: /SOCIAL|MEDIA|PR|MARKETING/, icon: 'megaphone-outline', accent: '#DDA0DD', priority: 6 },
 ];
 
 const FALLBACK_STYLES: Array<{ icon: keyof typeof Ionicons.glyphMap; accent: string }> = [
@@ -71,6 +73,7 @@ const FALLBACK_STYLES: Array<{ icon: keyof typeof Ionicons.glyphMap; accent: str
   { icon: 'sparkles-outline', accent: '#9BE7A2' },
   { icon: 'layers-outline', accent: '#C8A2FF' },
 ];
+
 
 /* ═══════════ ARC CARD COMPONENT ═══════════ */
 const ArcCard = React.memo(({ member, index, phase, total, onSelect }: {
@@ -118,7 +121,13 @@ const ArcCard = React.memo(({ member, index, phase, total, onSelect }: {
     <Animated.View style={[s.arcCardAbsolute, animStyle]}>
       <TouchableOpacity activeOpacity={0.85} onPress={() => onSelect(member)}>
         <View style={s.arcCard}>
-          <Image source={{ uri: member.image }} style={s.arcCardImg} />
+          <Image 
+            source={{ uri: member.image }} 
+            style={s.arcCardImg} 
+            contentFit="cover"
+            transition={300}
+            cachePolicy="memory-disk"
+          />
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.75)']} style={s.arcCardGrad} />
           <Text style={s.arcCardName} numberOfLines={1}>{member.name}</Text>
         </View>
@@ -192,6 +201,13 @@ export default function TeamScreen() {
           about: '',
         }));
         setTeam(mappedTeam);
+        // Prefetch images
+        const imagesToPrefetch = mappedTeam
+          .map((m) => m.image)
+          .filter((url) => !!url && !url.includes('placeholder'));
+        if (imagesToPrefetch.length > 0) {
+          Image.prefetch(imagesToPrefetch);
+        }
       }
     } catch (error) {
       console.error('Error fetching team:', error);
@@ -210,13 +226,14 @@ export default function TeamScreen() {
       const fallback = FALLBACK_STYLES[idx % FALLBACK_STYLES.length];
       const icon = styled?.icon ?? fallback.icon;
       const accent = styled?.accent ?? fallback.accent;
+      const priority = styled?.priority ?? 99;
       const label = key
         .toLowerCase()
         .split(' ')
         .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
         .join(' ');
 
-      map.set(key, { key, label, icon, accent });
+      map.set(key, { key, label, icon, accent, priority });
     });
     return map;
   }, [team]);
@@ -238,7 +255,9 @@ export default function TeamScreen() {
   }, [categories, groups]);
 
   const otherCategories = useMemo(() => {
-    return categories.filter(c => !/ORGANI[ZS]ER/.test(c.key));
+    return categories
+      .filter(c => !/ORGANI[ZS]ER/.test(c.key))
+      .sort((a, b) => a.priority - b.priority);
   }, [categories]);
 
   if (loading) {
@@ -298,7 +317,13 @@ export default function TeamScreen() {
                   return (
                     <View key={m.id} style={s.memberItem}>
                       <View style={[s.memberAvatarWrap, { borderColor: `${cat.accent}30` }]}>
-                        <Image source={{ uri: m.image }} style={s.memberAvatar} />
+                        <Image 
+                          source={{ uri: m.image }} 
+                          style={s.memberAvatar} 
+                          contentFit="cover"
+                          transition={200}
+                          cachePolicy="memory-disk"
+                        />
                       </View>
                       <Text style={s.memberName} numberOfLines={2}>{m.name}</Text>
                     </View>
@@ -334,7 +359,13 @@ export default function TeamScreen() {
                 <View style={s.modalAvatarSection}>
                   <View style={s.modalGlow} />
                   <View style={s.modalAvatarBorder}>
-                    <Image source={{ uri: selectedMember.image }} style={s.modalAvatar} />
+                    <Image 
+                      source={{ uri: selectedMember.image }} 
+                      style={s.modalAvatar} 
+                      contentFit="cover"
+                      transition={200}
+                      cachePolicy="memory-disk"
+                    />
                   </View>
                 </View>
 

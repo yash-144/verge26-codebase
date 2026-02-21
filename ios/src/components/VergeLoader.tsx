@@ -44,16 +44,20 @@ export const VergeLoader = ({ message = 'LOADING', fullScreen = true }: VergeLoa
 
 const styles = StyleSheet.create({
   container: {
+    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'transparent',
   },
   fullScreen: {
     flex: 1,
+    height: '100%',
     backgroundColor: 'transparent',
   },
   content: {
+    width: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   spinnerContainer: {
     width: 40,
@@ -75,17 +79,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: THEME.colors.text,
     letterSpacing: 8,
-    marginLeft: 8,
+    paddingLeft: 8, // Compensate for letter spacing to keep it centered
     lineHeight: 26,
     paddingBottom: 4,
+    textAlign: 'center',
   },
   message: {
     fontFamily: THEME.fonts.primaryBold,
     fontSize: 8,
     color: THEME.colors.textMuted,
     letterSpacing: 3,
+    paddingLeft: 3, // Compensate for letter spacing to keep it centered
     marginTop: 8,
-    width: '100%',
     textAlign: 'center',
     textTransform: 'uppercase',
   },

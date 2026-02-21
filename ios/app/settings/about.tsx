@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, ImageBackground } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,12 +29,14 @@ export default function AboutUs() {
           </Text>
         </View>
 
-        <ImageBackground
-          source={require('../../assets/schedule-bg.png')}
-          style={styles.srmCard}
-          resizeMode="cover"
-          imageStyle={styles.srmCardImage}
-        >
+        <View style={styles.srmCard}>
+          <Image
+            source={require('../../assets/schedule-bg.png')}
+            style={[StyleSheet.absoluteFill, styles.srmCardImage]}
+            contentFit="cover"
+            transition={500}
+            cachePolicy="memory-disk"
+          />
           <View style={styles.srmOverlay} />
           <View style={styles.srmContent}>
             <Text style={styles.sectionTitle}>ABOUT SRM</Text>
@@ -44,7 +47,7 @@ export default function AboutUs() {
               As part of the esteemed SRM Group, which has over three decades of educational excellence, SRM University, Delhi-NCR is guided by a mission to provide world-class education and empower students with the skills, knowledge, and values needed to excel in a globalized world.
             </Text>
           </View>
-        </ImageBackground>
+        </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>

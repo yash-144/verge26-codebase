@@ -4,7 +4,6 @@ import {
   View,
   TextInput,
   ScrollView,
-  Image,
   Platform,
   StyleSheet,
   TouchableOpacity,
@@ -14,6 +13,7 @@ import {
   KeyboardAvoidingView,
   ActivityIndicator
 } from 'react-native';
+import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -106,6 +106,7 @@ export default function Profile() {
     role: 'visitor',
   });
 
+  const [localProfilePic, setLocalProfilePic] = useState<string | null>(null);
   const [savedProfile, setSavedProfile] = useState<any>(null);
 
   // Refs to always have the latest values in callbacks (avoids stale closure race conditions)
@@ -172,7 +173,12 @@ export default function Profile() {
 
   const fetchUserProfile = async () => {
     try {
-      const backendUser = await authService.getBackendUser();
+      const [backendUser, localPic] = await Promise.all([
+        authService.getBackendUser(),
+        AsyncStorage.getItem('local_profile_pic'),
+      ]);
+
+      if (localPic) setLocalProfilePic(localPic);
 
       let response;
       if (backendUser?._id) {
@@ -343,6 +349,33 @@ export default function Profile() {
     }
   }, []);
 
+  const handleProfilePicResult = useCallback(async (result: ImagePicker.ImagePickerResult) => {
+    if (!result.canceled && result.assets[0].uri) {
+      const uri = result.assets[0].uri;
+      setLocalProfilePic(uri);
+      await AsyncStorage.setItem('local_profile_pic', uri);
+    }
+  }, []);
+
+  const launchProfileCamera = useCallback(async () => {
+    try {
+      await ImagePicker.requestCameraPermissionsAsync();
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.5,
+      });
+      handleProfilePicResult(result);
+    } catch { showAlert('Error', 'Camera not available'); }
+  }, [handleProfilePicResult]);
+
+  const launchProfileGallery = useCallback(async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.5,
+      });
+      handleProfilePicResult(result);
+    } catch { showAlert('Error', 'Gallery access denied'); }
+  }, [handleProfilePicResult]);
+
   const handleImageResult = useCallback(async (result: ImagePicker.ImagePickerResult, field: 'aadhaarImage' | 'studentIdImage') => {
     if (!result.canceled && result.assets[0].base64) {
       setUploadingField(field);
@@ -399,8 +432,8 @@ export default function Profile() {
     } catch { showAlert('Error', 'Gallery access denied'); }
   }, [handleImageResult]);
 
-  const pickImage = useCallback((field: 'aadhaarImage' | 'studentIdImage') => {
-    setActiveImageField(field);
+  const pickImage = useCallback((field?: 'aadhaarImage' | 'studentIdImage') => {
+    setActiveImageField(field || null);
     setShowImagePicker(true);
   }, []);
 
@@ -457,17 +490,41 @@ export default function Profile() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.cardContainer}>
-              <View style={styles.headerRow}>
-                <View style={styles.avatarWrapper}>
-                  <View style={styles.avatarContainer}>
-                    {profile.profilePic ? <Image source={{ uri: profile.profilePic as any }} style={styles.avatarImage} /> : <Ionicons name="person" size={32} color={THEME.colors.textMuted} />}
-                  </View>
-                  {completionPercent === 100 && (
-                    <View style={styles.verifiedBadge}><Ionicons name="checkmark" size={10} color="#000" /></View>
-                  )}
-                </View>
-
-                <View style={styles.headerInfo}>
+                          <View style={styles.headerRow}>
+                            <View style={styles.avatarWrapper}>
+                              <TouchableOpacity 
+                                onPress={() => pickImage()} 
+                                style={styles.avatarContainer}
+                                activeOpacity={0.8}
+                              >
+                                {localProfilePic ? (
+                                  <Image 
+                                    source={{ uri: localProfilePic }} 
+                                    style={styles.avatarImage} 
+                                    contentFit="cover"
+                                    transition={200}
+                                    cachePolicy="memory-disk"
+                                  />
+                                ) : profile.profilePic ? (
+                                  <Image 
+                                    source={{ uri: profile.profilePic }} 
+                                    style={styles.avatarImage} 
+                                    contentFit="cover"
+                                    transition={200}
+                                    cachePolicy="memory-disk"
+                                  />
+                                ) : (
+                                  <Ionicons name="camera" size={24} color={THEME.colors.textMuted} />
+                                )}
+                                <View style={styles.editIconOverlay}>
+                                  <Ionicons name="pencil" size={10} color="#000" />
+                                </View>
+                              </TouchableOpacity>
+                              {completionPercent === 100 && (
+                                <View style={styles.verifiedBadge}><Ionicons name="checkmark" size={10} color="#000" /></View>
+                              )}
+                            </View>
+                              <View style={styles.headerInfo}>
                   {isEditing ? (
                     <TextInput
                       style={styles.nameInput}
@@ -588,7 +645,15 @@ export default function Profile() {
                 <View style={styles.uploadWrapper}>
                   <Text style={styles.uploadLabel}>AADHAAR CARD</Text>
                   <TouchableOpacity onPress={() => pickImage('aadhaarImage')} style={styles.uploadBox} disabled={uploadingField === 'aadhaarImage'}>
-                    {profile.aadhaarImage ? <Image source={{ uri: profile.aadhaarImage }} style={styles.previewImg} /> : (
+                    {profile.aadhaarImage ? (
+                      <Image 
+                        source={{ uri: profile.aadhaarImage }} 
+                        style={styles.previewImg} 
+                        contentFit="cover"
+                        transition={200}
+                        cachePolicy="memory-disk"
+                      />
+                    ) : (
                       <View style={{ alignItems: 'center' }}>
                         <Ionicons name="camera" size={20} color={THEME.colors.textMuted} />
                         <Text style={styles.uploadText}>FRONT</Text>
@@ -605,7 +670,15 @@ export default function Profile() {
                 <View style={styles.uploadWrapper}>
                   <Text style={styles.uploadLabel}>STUDENT ID</Text>
                   <TouchableOpacity onPress={() => pickImage('studentIdImage')} style={styles.uploadBox} disabled={uploadingField === 'studentIdImage'}>
-                    {profile.studentIdImage ? <Image source={{ uri: profile.studentIdImage }} style={styles.previewImg} /> : (
+                    {profile.studentIdImage ? (
+                      <Image 
+                        source={{ uri: profile.studentIdImage }} 
+                        style={styles.previewImg} 
+                        contentFit="cover"
+                        transition={200}
+                        cachePolicy="memory-disk"
+                      />
+                    ) : (
                       <View style={{ alignItems: 'center' }}>
                         <Ionicons name="camera" size={20} color={THEME.colors.textMuted} />
                         <Text style={styles.uploadText}>FRONT</Text>
@@ -676,6 +749,7 @@ export default function Profile() {
                   onPress={() => {
                     setShowImagePicker(false);
                     if (activeImageField) launchCamera(activeImageField);
+                    else launchProfileCamera();
                   }}
                 >
                   <View style={styles.actionIconWrapper}>
@@ -689,6 +763,7 @@ export default function Profile() {
                   onPress={() => {
                     setShowImagePicker(false);
                     if (activeImageField) launchGallery(activeImageField);
+                    else launchProfileGallery();
                   }}
                 >
                   <View style={styles.actionIconWrapper}>
@@ -725,7 +800,9 @@ export default function Profile() {
                 <Image
                   source={{ uri: profile[activeImageField] }}
                   style={styles.fullImage}
-                  resizeMode="contain"
+                  contentFit="contain"
+                  transition={200}
+                  cachePolicy="memory-disk"
                 />
               )}
             </View>
@@ -821,6 +898,7 @@ const styles = StyleSheet.create({
   cardContainer: { backgroundColor: THEME.colors.cardBg, borderRadius: 16, padding: 20, marginBottom: 24, borderWidth: 1, borderColor: THEME.colors.border },
   avatarContainer: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#1A1A1A', borderWidth: 1.5, borderColor: THEME.colors.accent, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   avatarImage: { width: '100%', height: '100%' },
+  editIconOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(255, 107, 0, 0.8)', height: 18, alignItems: 'center', justifyContent: 'center' },
   verifiedBadge: { position: 'absolute', bottom: -2, right: -2, backgroundColor: THEME.colors.success, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: THEME.colors.cardBg },
   profileName: { fontSize: 20, fontWeight: '800', color: THEME.colors.text, includeFontPadding: false, height: 26 },
   nameInput: { fontSize: 20, fontWeight: '800', color: THEME.colors.accent, borderBottomWidth: 1, borderBottomColor: THEME.colors.accent, padding: 0, height: 26, includeFontPadding: false },

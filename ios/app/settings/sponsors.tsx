@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -80,7 +81,13 @@ export default function SponsorsScreen() {
                   <View 
                     style={[styles.iconBox, { backgroundColor: `${sponsor.color}20`, borderColor: `${sponsor.color}40` }]}
                   >
-                    <Image source={{ uri: sponsor.brandImageUrl }} style={styles.sponsorBrandImage} resizeMode="contain" />
+                    <Image 
+                      source={{ uri: sponsor.brandImageUrl }} 
+                      style={styles.sponsorBrandImage} 
+                      contentFit="contain"
+                      transition={200}
+                      cachePolicy="memory-disk"
+                    />
                   </View>
                   <Text style={styles.sponsorName} numberOfLines={1}>
                     {sponsor.name}

@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   Text,
-  Image,
   TouchableOpacity,
   Modal,
   TextInput,
@@ -15,8 +14,8 @@ import {
   Pressable,
   ScrollView
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { authService } from '@/services/auth';
 import { StatusBar } from 'expo-status-bar';
 import Animated, {
@@ -32,6 +31,9 @@ import { useRouter } from 'expo-router';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FULL_TEXT = "HEY.\nWELCOME TO\nVERGE";
 
+type AuthMode = 'login' | 'signup';
+type AuthStep = 'initial' | 'password' | 'otp' | 'success';
+
 export default function LoginScreen() {
   const router = useRouter();
   const { splashFinished, setIsVerified } = useAppContext();
@@ -41,9 +43,12 @@ export default function LoginScreen() {
 
   // Modal states
   const [authModalVisible, setAuthModalVisible] = useState(false);
-  const [authStep, setAuthStep] = useState<'email' | 'otp' | 'success'>('email');
+  const [mode, setMode] = useState<AuthMode>('login');
+  const [authStep, setAuthStep] = useState<AuthStep>('initial');
+  
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [modalLoading, setModalLoading] = useState(false);
@@ -73,30 +78,67 @@ export default function LoginScreen() {
     return () => clearInterval(cursorInterval);
   }, []);
 
-
-
-  const handleEmailInitiate = () => {
+  const resetForm = () => {
+    setName('');
+    setEmail('');
+    setPassword('');
+    setOtp(['', '', '', '', '', '']);
     setError('');
-    setAuthStep('email');
+  };
+
+  const openAuth = (newMode: AuthMode) => {
+    resetForm();
+    setMode(newMode);
+    setAuthStep('initial');
     setAuthModalVisible(true);
   };
 
-  const initiateUplink = async () => {
-    if (!name.trim()) {
-      setError('Please enter your name');
-      return;
+  const handleContinueInitial = async () => {
+    if (mode === 'signup') {
+      if (!name.trim()) return setError('Name is required');
+      if (!email.trim() || !email.includes('@')) return setError('Valid email is required');
+      if (password.length < 6) return setError('Password must be at least 6 characters');
+      
+      setModalLoading(true);
+      setError('');
+      try {
+        await authService.register(name.trim(), email.trim(), password);
+        setAuthStep('otp');
+      } catch (err: any) {
+        setError(err.message || 'Registration failed');
+      } finally {
+        setModalLoading(false);
+      }
+    } else {
+      // Login mode - just check email first
+      if (!email.trim() || !email.includes('@')) return setError('Valid email is required');
+      // For login, we can ask for password or OTP
+      setAuthStep('password');
     }
-    if (!email || !email.includes('@')) {
-      setError('Please enter a valid email address');
-      return;
-    }
+  };
+
+  const handleLoginPassword = async () => {
+    if (!password) return setError('Password is required');
     setModalLoading(true);
     setError('');
     try {
-      await authService.sendVerificationCode(email);
+      await authService.loginWithPassword(email.trim(), password);
+      completeAuth();
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleLoginOtpRequest = async () => {
+    setModalLoading(true);
+    setError('');
+    try {
+      await authService.sendLoginOtp(email.trim());
       setAuthStep('otp');
     } catch (err: any) {
-      setError(err.message || 'Failed to send code. Please try again.');
+      setError(err.message || 'Failed to send OTP');
     } finally {
       setModalLoading(false);
     }
@@ -113,7 +155,7 @@ export default function LoginScreen() {
 
     if (newOtp.every(digit => digit !== '') && newOtp.length === 6) {
       Keyboard.dismiss();
-      verifySequence(newOtp.join(''));
+      verifyOtp(newOtp.join(''));
     }
   };
 
@@ -123,26 +165,15 @@ export default function LoginScreen() {
     }
   };
 
-  const verifySequence = async (code: string) => {
+  const verifyOtp = async (code: string) => {
     if (modalLoading) return;
-
     setModalLoading(true);
     setError('');
     try {
-      await authService.confirmVerificationCode(email, code, name.trim());
-
-      setAuthStep('success');
-
-      // Show success for 1.5s then redirect
-      setTimeout(() => {
-        setAuthModalVisible(false);
-        setIsVerified(true);
-        router.replace('/dashboard');
-      }, 1500);
-
+      await authService.confirmVerificationCode(email.trim(), code);
+      completeAuth();
     } catch (err: any) {
-
-      setError(err.message || 'Invalid code. Please check and try again.');
+      setError(err.message || 'Invalid code');
       setOtp(['', '', '', '', '', '']);
       setTimeout(() => otpInputs.current[0]?.focus(), 100);
     } finally {
@@ -150,10 +181,25 @@ export default function LoginScreen() {
     }
   };
 
+  const completeAuth = () => {
+    setAuthStep('success');
+    setTimeout(() => {
+      setAuthModalVisible(false);
+      setIsVerified(true);
+      router.replace('/dashboard');
+    }, 1500);
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" translucent backgroundColor="transparent" />
-      <Image source={require('../assets/astronaut.png')} style={styles.bgImageFill} resizeMode="cover" />
+      <Image 
+        source={require('../assets/astronaut.png')} 
+        style={styles.bgImageFill} 
+        contentFit="cover"
+        transition={500}
+        cachePolicy="memory-disk"
+      />
 
       <SafeAreaView style={styles.overlay}>
         <View style={styles.titleContainer}>
@@ -164,12 +210,15 @@ export default function LoginScreen() {
         </View>
 
         <Animated.View entering={FadeInDown.duration(800)} style={styles.buttonContainer}>
-
-
-          <TouchableOpacity onPress={handleEmailInitiate} style={styles.emailContinueBtn} activeOpacity={0.8}>
-            <BlurView intensity={20} tint="dark" style={styles.emailBlur}>
-              <Ionicons name="mail-outline" size={16} color="#FFF" />
-              <Text style={styles.emailContinueText}>CONTINUE WITH EMAIL</Text>
+          <VergeButton 
+            label="SIGN IN" 
+            onPress={() => openAuth('login')} 
+            style={styles.primaryBtn}
+          />
+          
+          <TouchableOpacity onPress={() => openAuth('signup')} style={styles.secondaryBtn} activeOpacity={0.8}>
+            <BlurView intensity={20} tint="dark" style={styles.blurContainer}>
+              <Text style={styles.secondaryBtnText}>CREATE ACCOUNT</Text>
             </BlurView>
           </TouchableOpacity>
         </Animated.View>
@@ -183,9 +232,8 @@ export default function LoginScreen() {
         onRequestClose={() => !modalLoading && setAuthModalVisible(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
           <View style={styles.modalFullOverlay}>
             <Pressable
@@ -208,18 +256,19 @@ export default function LoginScreen() {
                     <View style={styles.successIconWrapper}>
                       <Ionicons name="checkmark-circle" size={80} color={THEME.colors.accent} />
                     </View>
-                    <Text style={styles.successTitle}>Verification Done</Text>
-                    <Text style={styles.successSubtitle}>Welcome to the Verge network.</Text>
+                    <Text style={styles.successTitle}>Welcome Back</Text>
+                    <Text style={styles.successSubtitle}>Identity verified. Uplink established.</Text>
                   </Animated.View>
                 ) : (
                   <>
                     <View style={styles.sheetHeader}>
                       <Text style={styles.sheetTitle}>
-                        {authStep === 'email' ? 'Email Verification' : 'Verify Code'}
+                        {mode === 'login' ? 'Welcome Back' : 'Join Verge'}
                       </Text>
                       <Text style={styles.sheetSubtitle}>
-                        {authStep === 'email'
-                          ? 'Enter your email address to receive a verification code.'
+                        {authStep === 'initial' 
+                          ? (mode === 'login' ? 'Enter your email to continue.' : 'Create your account to join the festival.')
+                          : authStep === 'password' ? 'Enter your password.'
                           : `Enter the 6-digit code sent to ${email}`}
                       </Text>
                     </View>
@@ -231,71 +280,114 @@ export default function LoginScreen() {
                       </View>
                     ) : null}
 
-                    {authStep === 'email' ? (
-                      <View style={styles.sheetBody}>
-                        <TextInput
-                          style={styles.sheetInput}
-                          placeholder="Your full name"
-                          placeholderTextColor="rgba(255,255,255,0.3)"
-                          value={name}
-                          onChangeText={(t) => { setName(t); setError(''); }}
-                          autoCapitalize="words"
-                          selectionColor={THEME.colors.accent}
-                          autoFocus
-                        />
-                        <TextInput
-                          style={styles.sheetInput}
-                          placeholder="name@example.com"
-                          placeholderTextColor="rgba(255,255,255,0.3)"
-                          value={email}
-                          onChangeText={(t) => { setEmail(t); setError(''); }}
-                          keyboardType="email-address"
-                          autoCapitalize="none"
-                          selectionColor={THEME.colors.accent}
-                        />
-                        <VergeButton
-                          label="Send Code"
-                          onPress={initiateUplink}
-                          loading={modalLoading}
-                          style={styles.sheetPrimaryBtn}
-                        />
-                      </View>
-                    ) : (
-                      <View style={styles.sheetBody}>
-                        <View style={styles.otpRow}>
-                          {otp.map((digit, idx) => (
+                    <View style={styles.sheetBody}>
+                      {authStep === 'initial' && (
+                        <>
+                          {mode === 'signup' && (
                             <TextInput
-                              key={idx}
-                              ref={ref => { otpInputs.current[idx] = ref; }}
-                              style={[styles.otpBox, digit !== '' && styles.otpBoxActive]}
-                              value={digit}
-                              onChangeText={(v) => handleOtpChange(v, idx)}
-                              onKeyPress={(e) => handleOtpKeyPress(e, idx)}
-                              keyboardType="number-pad"
-                              maxLength={1}
-                              selectTextOnFocus
+                              style={styles.sheetInput}
+                              placeholder="Full Name"
+                              placeholderTextColor="rgba(255,255,255,0.3)"
+                              value={name}
+                              onChangeText={setName}
+                              autoCapitalize="words"
                               selectionColor={THEME.colors.accent}
-                              autoFocus={idx === 0}
                             />
-                          ))}
-                        </View>
+                          )}
+                          <TextInput
+                            style={styles.sheetInput}
+                            placeholder="Email Address"
+                            placeholderTextColor="rgba(255,255,255,0.3)"
+                            value={email}
+                            onChangeText={setEmail}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            selectionColor={THEME.colors.accent}
+                          />
+                          {mode === 'signup' && (
+                            <TextInput
+                              style={styles.sheetInput}
+                              placeholder="Password"
+                              placeholderTextColor="rgba(255,255,255,0.3)"
+                              value={password}
+                              onChangeText={setPassword}
+                              secureTextEntry
+                              selectionColor={THEME.colors.accent}
+                            />
+                          )}
+                          <VergeButton
+                            label={mode === 'signup' ? "Register" : "Continue"}
+                            onPress={handleContinueInitial}
+                            loading={modalLoading}
+                          />
+                        </>
+                      )}
 
-                        {modalLoading && (
-                          <View style={styles.sheetVerifyingIndicator}>
-                            <ActivityIndicator size="small" color={THEME.colors.accent} />
-                            <Text style={styles.sheetVerifyingText}>Verifying code...</Text>
+                      {authStep === 'password' && (
+                        <>
+                          <TextInput
+                            style={styles.sheetInput}
+                            placeholder="Password"
+                            placeholderTextColor="rgba(255,255,255,0.3)"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry
+                            autoFocus
+                            selectionColor={THEME.colors.accent}
+                          />
+                          <VergeButton
+                            label="Login"
+                            onPress={handleLoginPassword}
+                            loading={modalLoading}
+                          />
+                          <TouchableOpacity 
+                            onPress={handleLoginOtpRequest}
+                            style={styles.otpLink}
+                            disabled={modalLoading}
+                          >
+                            <Text style={styles.otpLinkText}>Login with OTP instead</Text>
+                          </TouchableOpacity>
+                        </>
+                      )}
+
+                      {authStep === 'otp' && (
+                        <View style={styles.otpContainer}>
+                          <View style={styles.otpRow}>
+                            {otp.map((digit, idx) => (
+                              <TextInput
+                                key={idx}
+                                ref={ref => { otpInputs.current[idx] = ref; }}
+                                style={[styles.otpBox, digit !== '' && styles.otpBoxActive]}
+                                value={digit}
+                                onChangeText={(v) => handleOtpChange(v, idx)}
+                                onKeyPress={(e) => handleOtpKeyPress(e, idx)}
+                                keyboardType="number-pad"
+                                maxLength={1}
+                                selectTextOnFocus
+                                selectionColor={THEME.colors.accent}
+                                autoFocus={idx === 0}
+                              />
+                            ))}
                           </View>
-                        )}
-
+                          {modalLoading && (
+                            <View style={styles.verifyingIndicator}>
+                              <ActivityIndicator size="small" color={THEME.colors.accent} />
+                              <Text style={styles.verifyingText}>Verifying...</Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
+                      
+                      {authStep !== 'initial' && (
                         <TouchableOpacity
-                          onPress={() => { setAuthStep('email'); setError(''); setOtp(['', '', '', '', '', '']); }}
-                          style={styles.sheetBackAction}
+                          onPress={() => { setAuthStep('initial'); setError(''); }}
+                          style={styles.backAction}
                           disabled={modalLoading}
                         >
-                          <Text style={styles.sheetBackActionText}>Use a different email</Text>
+                          <Text style={styles.backActionText}>Go Back</Text>
                         </TouchableOpacity>
-                      </View>
-                    )}
+                      )}
+                    </View>
                   </>
                 )}
               </ScrollView>
@@ -312,10 +404,10 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', paddingHorizontal: 24, paddingBottom: 40 },
   bgImageFill: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   buttonContainer: { gap: 12 },
-  loginBtn: { height: 56, borderRadius: 16 },
-  emailContinueBtn: { height: 56, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  emailBlur: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  emailContinueText: { color: '#FFF', fontSize: 12, fontFamily: THEME.fonts.primaryBold, letterSpacing: 1.5 },
+  primaryBtn: { height: 56, borderRadius: 16 },
+  secondaryBtn: { height: 56, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  blurContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  secondaryBtnText: { color: '#FFF', fontSize: 12, fontFamily: THEME.fonts.primaryBold, letterSpacing: 1.5 },
   titleContainer: { marginBottom: 40, paddingHorizontal: 4 },
   welcomeText: { fontFamily: THEME.fonts.primaryBold, fontSize: 34, color: '#FFFFFF', textAlign: 'left', lineHeight: 40, letterSpacing: 1, textTransform: 'uppercase', textShadowColor: 'rgba(255, 107, 0, 0.4)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15 },
 
@@ -329,15 +421,15 @@ const styles = StyleSheet.create({
     width: '100%',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    marginTop: 'auto', // Forces it to stay at the bottom
   },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'center', marginBottom: 20 },
-  sheetHeader: { marginBottom: 28 },
-  sheetTitle: { fontSize: 22, fontWeight: '700', color: '#FFF', marginBottom: 8 },
+  sheetHeader: { marginBottom: 24 },
+  sheetTitle: { fontSize: 24, fontWeight: '700', color: '#FFF', marginBottom: 8 },
   sheetSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 20 },
-  sheetBody: { gap: 20 },
+  sheetBody: { gap: 16 },
   sheetInput: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 16, height: 56, paddingHorizontal: 20, color: '#FFF', fontSize: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  sheetPrimaryBtn: { height: 56, borderRadius: 16 },
+  
+  otpContainer: { gap: 20 },
   otpRow: { flexDirection: 'row', justifyContent: 'space-between' },
   otpBox: {
     width: (SCREEN_WIDTH - 88) / 6,
@@ -352,15 +444,19 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   otpBoxActive: { borderColor: THEME.colors.accent, backgroundColor: 'rgba(255, 107, 0, 0.05)' },
-  sheetVerifyingIndicator: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 10 },
-  sheetVerifyingText: { color: THEME.colors.accent, fontSize: 13, fontWeight: '600' },
-  sheetBackAction: { alignSelf: 'center', paddingVertical: 10, marginTop: 10 },
-  sheetBackActionText: { color: THEME.colors.textMuted, fontSize: 13, fontWeight: '500' },
+  verifyingIndicator: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  verifyingText: { color: THEME.colors.accent, fontSize: 13, fontWeight: '600' },
+  
+  otpLink: { alignSelf: 'center', padding: 8 },
+  otpLinkText: { color: THEME.colors.accent, fontSize: 13, fontWeight: '600' },
+  backAction: { alignSelf: 'center', padding: 8 },
+  backActionText: { color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: '500' },
+  
   errorBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 75, 75, 0.1)', padding: 14, borderRadius: 16, marginBottom: 16, gap: 10 },
   errorBannerText: { color: '#FF4B4B', fontSize: 13, fontWeight: '500', flex: 1 },
 
   successContainer: { alignItems: 'center', paddingVertical: 20 },
   successIconWrapper: { marginBottom: 20 },
   successTitle: { fontSize: 24, fontWeight: '700', color: '#FFF', marginBottom: 10 },
-  successSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.5)' },
+  successSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.5)', textAlign: 'center' },
 });

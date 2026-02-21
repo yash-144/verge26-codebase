@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { View, Text, Image, ScrollView, StatusBar, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StatusBar, StyleSheet, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
 import { ShoppingBag, CircleAlert, Minus, Plus } from 'lucide-react-native';
@@ -106,7 +107,13 @@ export default function ProductDetail() {
               removeClippedSubviews={true}
             >
               <View style={styles.imageContainer}>
-                <Image source={{ uri: imageUrl }} style={{ width: '100%', aspectRatio: 1 }} resizeMode="cover" />
+                <Image 
+                  source={{ uri: imageUrl }} 
+                  style={{ width: '100%', aspectRatio: 1 }} 
+                  contentFit="cover" 
+                  transition={200}
+                  cachePolicy="memory-disk"
+                />
               </View>
 
               <View style={{ paddingHorizontal: 20 }}>

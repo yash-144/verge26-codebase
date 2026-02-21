@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from '
 import {
   Text,
   View,
-  Image,
   Pressable,
   TextInput,
   StyleSheet,
@@ -10,7 +9,9 @@ import {
   PanResponder,
   FlatList,
   Platform,
+  Image as RNImage,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Grid3X3,
@@ -45,7 +46,7 @@ import { VergeLoader } from '../../src/components/VergeLoader';
 import { apiHelper } from '../../src/services/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const MERCH_BG_ASSET = Image.resolveAssetSource(require('../../assets/merch-bg.jpeg'));
+const MERCH_BG_ASSET = RNImage.resolveAssetSource(require('../../assets/merch-bg.jpeg'));
 const MERCH_BG_RATIO = MERCH_BG_ASSET.width / MERCH_BG_ASSET.height;
 
 const CARD_WIDTH = SCREEN_WIDTH * 0.6;
@@ -100,7 +101,9 @@ const CarouselCard = memo(({ item, index, scrollX, onPress }: any) => {
           <Image
             source={{ uri: item.images?.[0] }}
             style={styles.cardImage}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={300}
+            cachePolicy="memory-disk"
           />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.9)']}
@@ -296,7 +299,9 @@ const JoystickButton = memo(({ activeCategory, onSelect, onHoldChange }: any) =>
           <Image
             source={require('../../assets/moon.png')}
             style={{ width: '100%', height: '100%', opacity: isOpen ? 1 : 0.6 }}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={300}
+            cachePolicy="memory-disk"
           />
           {isPinnedOpen && !isHolding && (
             <Animated.View
@@ -369,7 +374,16 @@ export default function Merch() {
       try {
         const r = await apiHelper.fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/products`);
         const j = await r.json();
-        if (j.status) setProducts(j.data);
+        if (j.status && j.data) {
+          setProducts(j.data);
+          // Prefetch images
+          const imagesToPrefetch = j.data
+            .map((p: any) => p.images?.[0])
+            .filter((url: string) => !!url);
+          if (imagesToPrefetch.length > 0) {
+            Image.prefetch(imagesToPrefetch);
+          }
+        }
       } catch (e) { /* silent */ } finally { setLoading(false); }
     })();
   }, []);
@@ -399,7 +413,9 @@ export default function Merch() {
       <Image
         source={require('../../assets/merch-bg.jpeg')}
         style={styles.merchBgImage}
-        resizeMode="cover"
+        contentFit="cover"
+        transition={500}
+        cachePolicy="memory-disk"
       />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.6)' }]} />
 

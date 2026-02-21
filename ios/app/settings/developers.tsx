@@ -4,11 +4,11 @@ import {
   Text, 
   ScrollView, 
   TouchableOpacity, 
-  Image, 
   Modal, 
   Linking, 
   StyleSheet
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -84,7 +84,13 @@ export default function Developers() {
             activeOpacity={0.9}
             style={styles.devCard}
           >
-            <Image source={{ uri: dev.image }} style={styles.devThumb} />
+            <Image 
+              source={{ uri: dev.image }} 
+              style={styles.devThumb} 
+              contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
+            />
 
             <View style={styles.devInfo}>
               <View style={styles.roleBadge}>
@@ -128,7 +134,13 @@ export default function Developers() {
 
             <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
               <View style={styles.profileHeader}>
-                <Image source={{ uri: selectedDev?.image }} style={styles.largeAvatar} />
+                <Image 
+                  source={{ uri: selectedDev?.image }} 
+                  style={styles.largeAvatar} 
+                  contentFit="cover"
+                  transition={200}
+                  cachePolicy="memory-disk"
+                />
                 
                 <View style={styles.profileMeta}>
                   <View style={[styles.roleBadge, { marginBottom: 8 }]}>

@@ -5,12 +5,15 @@ import {
   StyleSheet,
   Pressable,
   TouchableOpacity,
-  Image,
   useWindowDimensions,
   AppState,
+  Image as RNImage,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image } from 'expo-image';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets, EdgeInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -444,6 +447,45 @@ const RocketCursor = memo(({ progress, animationData }: { progress: SharedValue<
   );
 });
 
+const ProfileBox = memo(({ 
+  profilePhoto, 
+  onPress, 
+  isOpen, 
+  top 
+}: { 
+  profilePhoto: string | null; 
+  onPress: () => void; 
+  isOpen: boolean;
+  top: number;
+}) => {
+  return (
+    <View style={[styles.profileButtonContainer, { top }]}>
+      <TouchableOpacity 
+        onPress={onPress} 
+        activeOpacity={0.75} 
+        disabled={isOpen} 
+        style={styles.profileGlassContainer}
+      >
+        <BlurView intensity={30} tint="dark" style={styles.profileBlur}>
+          <View style={styles.profileImageFrame}>
+            {profilePhoto ? (
+              <Image 
+                source={{ uri: profilePhoto }} 
+                style={styles.profileImage} 
+                contentFit="cover"
+                transition={300}
+                cachePolicy="memory-disk"
+              />
+            ) : (
+              <Ionicons name="person-outline" size={18} color={THEME.colors.textSecondary} />
+            )}
+          </View>
+        </BlurView>
+      </TouchableOpacity>
+    </View>
+  );
+});
+
 // ─── Main Dashboard ───
 export default function DashboardScreen() {
   const router = useRouter();
@@ -473,10 +515,22 @@ export default function DashboardScreen() {
   useFocusEffect(
     useCallback(() => {
       const init = async () => {
-        const session = await authService.getUserSession();
-        setProfilePhoto(session?.profilePic ?? null);
+        const [session, localPic] = await Promise.all([
+          authService.getUserSession(),
+          AsyncStorage.getItem('local_profile_pic'),
+        ]);
+        
+        setProfilePhoto(localPic || session?.profilePic || null);
         isNavigatingRef.current = false;
         bgRef.current?.play();
+
+        // Prefetch high-priority background assets for other screens
+        Image.prefetch([
+          RNImage.resolveAssetSource(require('../assets/astronaut.png')).uri,
+          RNImage.resolveAssetSource(require('../assets/events-bg.png')).uri,
+          RNImage.resolveAssetSource(require('../assets/merch-bg.jpeg')).uri,
+          RNImage.resolveAssetSource(require('../assets/schedule-bg.png')).uri,
+        ]);
       };
 
       init();
@@ -578,17 +632,12 @@ export default function DashboardScreen() {
 
       <SpaceCommandButton menuProgress={menuProgress} onPress={toggleDrawer} top={topInset} />
 
-      <View style={[styles.profileButtonContainer, { top: topInset }]}>
-        <TouchableOpacity onPress={handleProfilePress} activeOpacity={0.75} disabled={isOpen} style={styles.profileButton}>
-          {profilePhoto ? (
-            <Image source={{ uri: profilePhoto }} style={styles.profileImage} />
-          ) : (
-            <View style={styles.profilePlaceholder}>
-              <Ionicons name="person-outline" size={18} color={THEME.colors.text} />
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
+      <ProfileBox 
+        profilePhoto={profilePhoto} 
+        onPress={handleProfilePress} 
+        isOpen={isOpen} 
+        top={topInset} 
+      />
 
       <Animated.View style={[styles.drawerOverlay, drawerContainerStyle]} pointerEvents={isOpen ? 'auto' : 'none'} renderToHardwareTextureAndroid>
         <View style={styles.drawerBackdrop} />
@@ -746,28 +795,32 @@ const styles = StyleSheet.create({
     right: 18,
     zIndex: 300,
   },
-  profileButton: {
+  profileGlassContainer: {
     width: 46,
     height: 46,
-    borderRadius: 14,
+    borderRadius: 23,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
-    backgroundColor: 'rgba(0,0,0,0.38)',
+    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  profileBlur: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  profileImageFrame: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   profileImage: {
     width: '100%',
     height: '100%',
-  },
-  profilePlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   drawerOverlay: {
     ...StyleSheet.absoluteFillObject,

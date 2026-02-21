@@ -1,2 +1,7 @@
 ios/.env
 ios/node_modules/
+android/.expo/
+ios/.expo/
+ios/android/
+ios/server/
+
