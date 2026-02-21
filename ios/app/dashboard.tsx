@@ -43,7 +43,7 @@ import { THEME } from '@/constants/Theme';
 
 // --- Types ---
 type NavRoute = '/(tabs)/events' | '/(tabs)/schedule' | '/(tabs)/merch' | '/(tabs)/accommodation' | '/(tabs)/profile';
-type DrawerRoute = '/maps' | 'settings/info' | 'settings/about' | 'settings/notification' | '/settings/sponsors' | '/settings/contact' | '/settings/developers' | '/settings/team' | '/';
+type DrawerRoute = '/maps' | '/settings/info' | '/settings/about' | '/settings/notification' | '/settings/sponsors' | '/settings/contact' | '/settings/developers' | '/settings/team' | '/';
 
 // --- Configuration ---
 const NAV_ITEMS = [
@@ -57,7 +57,7 @@ const DRAWER_LINKS = [
   { id: 'maps', label: 'Maps', sub: 'NAV', icon: 'map-outline' },
   { id: 'info', label: 'General Info', sub: 'READ', icon: 'newspaper-outline' },
   { id: 'about', label: 'About Verge', sub: 'READ', icon: 'earth-outline' },
-  { id: 'sponsors', label: 'Sponsors', sub: 'PARTNERS', icon: 'diamond-outline' },
+  { id: 'sponsors', label: 'Sponsors', sub: 'PARTNERS', icon: 'sparkles-outline' },
   { id: 'contact', label: 'Contact Us', sub: 'CONNECT', icon: 'chatbubble-ellipses-outline' },
   { id: 'team', label: 'Verge Team', sub: 'TEAM', icon: 'people-outline' },
 
@@ -72,8 +72,8 @@ const NAV_ROUTES: Record<string, NavRoute> = {
 
 const DRAWER_ROUTES: Record<string, DrawerRoute> = {
   maps: '/maps',
-  info: 'settings/info',
-  about: 'settings/about',
+  info: '/settings/info',
+  about: '/settings/about',
   sponsors: '/settings/sponsors',
   contact: '/settings/contact',
   team: '/settings/team',

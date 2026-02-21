@@ -15,6 +15,7 @@ import { VideoSplashScreen } from '@/components/VideoSplashScreen';
 import { THEME } from '@/constants/Theme';
 import { GlobalAlert } from '@/components/GlobalAlert';
 import { NetworkListener } from '@/components/NetworkListener';
+import { Ionicons } from '@expo/vector-icons';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -26,6 +27,7 @@ function RootLayoutContent() {
     Orbitron_900Black,
     'Anurati': require('../assets/fonts/Anurati-Regular.otf'),
     'Guardians': require('../assets/fonts/Guardians.ttf'),
+    ...Ionicons.font,
   });
 
   const [user, setUser] = useState<Session | null>(null);

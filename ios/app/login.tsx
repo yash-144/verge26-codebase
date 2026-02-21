@@ -15,7 +15,7 @@ import {
   ScrollView
 } from 'react-native';
 import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { authService } from '@/services/auth';
 import { StatusBar } from 'expo-status-bar';
 import Animated, {
@@ -27,6 +27,7 @@ import { VergeButton } from '@/components/VergeButton';
 import { useAppContext } from '@/context/AppContext';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FULL_TEXT = "HEY.\nWELCOME TO\nVERGE";
@@ -34,26 +35,10 @@ const FULL_TEXT = "HEY.\nWELCOME TO\nVERGE";
 type AuthMode = 'login' | 'signup';
 type AuthStep = 'initial' | 'password' | 'otp' | 'success';
 
-export default function LoginScreen() {
-  const router = useRouter();
-  const { splashFinished, setIsVerified } = useAppContext();
-  const [loading, setLoading] = useState(false);
+const WelcomeMessage = () => {
   const [displayedText, setDisplayedText] = useState('');
   const [cursorVisible, setCursorVisible] = useState(true);
-
-  // Modal states
-  const [authModalVisible, setAuthModalVisible] = useState(false);
-  const [mode, setMode] = useState<AuthMode>('login');
-  const [authStep, setAuthStep] = useState<AuthStep>('initial');
-  
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [error, setError] = useState('');
-  const [modalLoading, setModalLoading] = useState(false);
-
-  const otpInputs = useRef<(TextInput | null)[]>([]);
+  const { splashFinished } = useAppContext();
 
   useEffect(() => {
     if (!splashFinished) return;
@@ -77,6 +62,33 @@ export default function LoginScreen() {
     const cursorInterval = setInterval(() => setCursorVisible((v) => !v), 500);
     return () => clearInterval(cursorInterval);
   }, []);
+
+  return (
+    <Text style={styles.welcomeText}>
+      {displayedText}
+      <Text style={{ color: cursorVisible ? THEME.colors.accent : 'transparent' }}>_</Text>
+    </Text>
+  );
+};
+
+export default function LoginScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { setIsVerified } = useAppContext();
+
+  // Modal states
+  const [authModalVisible, setAuthModalVisible] = useState(false);
+  const [mode, setMode] = useState<AuthMode>('login');
+  const [authStep, setAuthStep] = useState<AuthStep>('initial');
+  
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [error, setError] = useState('');
+  const [modalLoading, setModalLoading] = useState(false);
+
+  const otpInputs = useRef<(TextInput | null)[]>([]);
 
   const resetForm = () => {
     setName('');
@@ -110,9 +122,7 @@ export default function LoginScreen() {
         setModalLoading(false);
       }
     } else {
-      // Login mode - just check email first
       if (!email.trim() || !email.includes('@')) return setError('Valid email is required');
-      // For login, we can ask for password or OTP
       setAuthStep('password');
     }
   };
@@ -186,7 +196,6 @@ export default function LoginScreen() {
     setTimeout(() => {
       setAuthModalVisible(false);
       setIsVerified(true);
-      router.replace('/dashboard');
     }, 1500);
   };
 
@@ -203,10 +212,7 @@ export default function LoginScreen() {
 
       <SafeAreaView style={styles.overlay}>
         <View style={styles.titleContainer}>
-          <Text style={styles.welcomeText}>
-            {displayedText}
-            <Text style={{ color: cursorVisible ? THEME.colors.accent : 'transparent' }}>_</Text>
-          </Text>
+          <WelcomeMessage />
         </View>
 
         <Animated.View entering={FadeInDown.duration(800)} style={styles.buttonContainer}>
@@ -232,8 +238,9 @@ export default function LoginScreen() {
         onRequestClose={() => !modalLoading && setAuthModalVisible(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
           style={{ flex: 1 }}
+          keyboardVerticalOffset={0}
         >
           <View style={styles.modalFullOverlay}>
             <Pressable
@@ -244,13 +251,15 @@ export default function LoginScreen() {
             </Pressable>
 
             <View style={styles.bottomSheet}>
+              <View style={styles.sheetHandle} />
               <ScrollView
                 keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ paddingBottom: Platform.OS === 'ios' ? 40 : 20 }}
+                contentContainerStyle={{ 
+                  paddingBottom: insets.bottom + 24,
+                }}
                 bounces={false}
+                showsVerticalScrollIndicator={false}
               >
-                <View style={styles.sheetHandle} />
-
                 {authStep === 'success' ? (
                   <Animated.View entering={FadeIn} style={styles.successContainer}>
                     <View style={styles.successIconWrapper}>
